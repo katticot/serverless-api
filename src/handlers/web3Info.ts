@@ -18,6 +18,16 @@ const headers = {
   'Content-type': 'application/json',
 }
 
+function hashToken(account, amount) {
+  return Buffer.from(
+    ethers.utils
+      .solidityKeccak256(["address", "uint256"], [account, amount])
+      .slice(2),
+    "hex"
+  );
+}
+
+
 export const Balance = async (request) => {
   const address = request.params.address
   if (address == '') {
@@ -32,8 +42,8 @@ export const Balance = async (request) => {
     address: address,
     balance: parseInt(data.result, 16) / 1000000000000000000,
   }
-  ADDRESS_STORE.put(balance.address, balance.balance)
-  ADDRESS_STORE.put("raffleWinners", balance.balance)
+  ADDRESS_STORE.put(balance.address, JSON.stringify(balance))
+  ADDRESS_STORE.put("raffleWinners", JSON.stringify(raffleWinners["0x70997970C51812dc3A010C7d01b50e0d17dc79C8"]))
   return new Response(JSON.stringify(balance), { headers })
 }
 
@@ -45,6 +55,14 @@ export const Supply = async (request) => {
   return new Response(JSON.stringify(supply), { headers })
 }
 
+export const RaffleRoot = async (request) => {
+const rafflehash = Object.entries(raffleWinners).map((token) =>
+hashToken(...token)
+);
+  const raffleTree = new MerkleTree(rafflehash, keccak256, { sortPairs: true });
+const raffleRoot = raffleTree.getHexRoot();
+  return new Response(raffleRoot, { headers })
+}
 async function sendRequest(body: string) {
   const alchemyEndpoint =
     'https://eth-ropsten.alchemyapi.io/v2/' + alchemyRopstenApiKey
